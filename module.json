@@ -1,19 +1,18 @@
 {
   "id": "dynamic-music-module",
-  "name": "dynamic-music-module",
   "title": "Dynamic Music Module",
-  "description": "AMM is a module for Foundry VTT that provides an immersive and truly dynamic soundtrack. It monitors what is happening during your session and automatically changes the music based on combat status, overall health of the party, enemy types, locations, and more.",
+  "description": "DMM is a Foundry VTT module that provides an immersive, dynamic soundtrack that reacts to combat, health, location, and more.",
   "version": "0.1.0",
-  "author": "Neo Shain",
-  "minimumCoreVersion": "13",
+  "author": "Neo Shain (Music by Dallas Scott Wilke)",
+  "minimumCoreVersion": "11",
   "compatibleCoreVersion": "13",
-  "scripts": [],
-  "esmodules": ["scripts/main.js"],
+  "scripts": ["scripts/main.js"],
   "styles": ["styles/style.css"],
-  "packs": [],
+  "esmodules": [],
   "languages": [],
-  "url": "https://github.com/edwilke86/dynamic-music-module",
-  "manifest": "https://raw.githubusercontent.com/edwilke86/dynamic-music-module/main/module.json",
-  "download": "https://github.com/edwilke86/dynamic-music-module/archive/refs/heads/main.zip"
+  "packs": [],
+  "socket": true,
+  "url": "https://github.com/edwilke86/Dynamic-Music-Module",
+  "manifest": "https://raw.githubusercontent.com/edwilke86/Dynamic-Music-Module/main/module.json",
+  "download": "https://github.com/edwilke86/Dynamic-Music-Module/archive/refs/heads/main.zip"
 }
-
