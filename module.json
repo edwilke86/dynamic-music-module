@@ -6,7 +6,10 @@
   "author": "Neo Shain (Music by Dallas Scott Wilke)",
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "13",
-  "scripts": ["scripts/main.js"],
+  "scripts": [
+    "scripts/main.js",
+    "scripts/music-player.js"
+  ],
   "styles": ["styles/style.css"],
   "esmodules": [],
   "languages": [],
