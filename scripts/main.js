@@ -6,9 +6,21 @@
  */
 
 Hooks.once("init", () => {
-  console.log("dynamic Music Module | Initializing...");
+  console.log("Dynamic Music Module | Initializing...");
 });
 
 Hooks.once("ready", () => {
-  console.log("dynamic Music Module | Ready! Foundry is fully loaded.");
+  const banner = `
+██████╗ ███╗   ███╗███╗   ███╗
+██╔══██╗████╗ ████║████╗ ████║
+██║  ██║██╔████╔██║██╔████╔██║
+██║  ██║██║╚██╔╝██║██║╚██╔╝██║
+██████╔╝██║ ╚═╝ ██║██║ ╚═╝ ██║
+╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝
+        🎵 DYNAMIC MUSIC MODULE READY 🎵`;
+
+  console.log(`%c${banner}`, "color: #00ccff; font-weight: bold; font-family: monospace;");
 });
+
+
+
