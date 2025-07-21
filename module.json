@@ -1,0 +1,19 @@
+{
+  "id": "dynamic-music-module",
+  "name": "dynamic-music-module",
+  "title": "Dynamic Music Module",
+  "description": "AMM is a module for Foundry VTT that provides an immersive and truly dynamic soundtrack. It monitors what is happening during your session and automatically changes the music based on combat status, overall health of the party, enemy types, locations, and more.",
+  "version": "0.1.0",
+  "author": "Neo Shain",
+  "minimumCoreVersion": "13",
+  "compatibleCoreVersion": "13",
+  "scripts": [],
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/style.css"],
+  "packs": [],
+  "languages": [],
+  "url": "https://github.com/edwilke86/dynamic-music-module",
+  "manifest": "https://raw.githubusercontent.com/edwilke86/dynamic-music-module/main/module.json",
+  "download": "https://github.com/edwilke86/dynamic-music-module/archive/refs/heads/main.zip"
+}
+

@@ -1,0 +1,26 @@
+/* Adaptive Music Module Stylesheet */
+
+/* Optional: style for any custom panel you might add later */
+.amm-panel {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #999;
+  padding: 10px;
+  color: #fff;
+  font-family: 'Signika', sans-serif;
+  font-size: 14px;
+  border-radius: 5px;
+}
+
+/* Placeholder class for future buttons */
+.amm-button {
+  background-color: #444;
+  border: 1px solid #888;
+  color: #fff;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.amm-button:hover {
+  background-color: #666;
+}
