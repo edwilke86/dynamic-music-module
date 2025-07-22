@@ -3,9 +3,18 @@
   "title": "Dynamic Music Module",
   "description": "DMM is a Foundry VTT module that provides an immersive, dynamic soundtrack that reacts to combat, health, location, and more.",
   "version": "0.1.0",
-  "author": "Neo Shain (Music by Dallas Scott Wilke)",
-  "minimumCoreVersion": "11",
-  "compatibleCoreVersion": "13",
+  "authors": [
+    {
+      "name": "NeoShain",
+      "discord": ".neoshain",
+      "email": "edwilke86@gmail.com"
+    }
+  ],
+  "compatibility": {
+    "minimum": 11,
+    "verified": "13",
+    "maximum": "13"
+    },
   "scripts": [
     "scripts/main.js",
     "scripts/music-player.js"
