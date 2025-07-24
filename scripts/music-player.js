@@ -22,17 +22,21 @@ async function playRandomMusicLayers() {
 
   // Create & play each via AudioHelper
   for (const file of selected) {
-    const sound = foundry.audio.AudioHelper.play({
-      src: basePath + file,
-      autoplay: true,
-      volume: 1.0,
-      loop: false
-    }, true);
-    if (!sound) {
-      console.warn(`DMM | Failed to play sound: ${file}`);
-      continue;
+    try {
+      const sound = await foundry.audio.AudioHelper.play({
+        src: basePath + file,
+        autoplay: true,
+        volume: 1.0,
+        loop: false
+      }, true);
+      if (!sound) {
+        console.warn(`DMM | Failed to play sound: ${file}`);
+        continue;
+      }
+      window.DMM.currentDmmSounds.push(sound);
+    } catch (err) {
+      console.warn(`DMM | Error playing sound: ${file}`, err);
     }
-    if (sound) window.DMM.currentDmmSounds.push(sound);
   }
 
   // Queue the next run
@@ -42,7 +46,7 @@ async function playRandomMusicLayers() {
 function stopDynamicMusic() {
   // Stop all tracked sounds
   for (const snd of window.DMM.currentDmmSounds) {
-    if (typeof snd.stop === "function") snd.stop();
+    if (snd && typeof snd.stop === "function") snd.stop();
   }
   window.DMM.currentDmmSounds = [];
 
