@@ -1,45 +1,56 @@
-const TRACKS = [
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Celli. Pizz.ogg",
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Harp.ogg",
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Horns.ogg",
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Pad.ogg",
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Vio. Section.ogg",
-  "modules/dynamic-music-module/audio/Sylvan Stillness - Vio. Solo.ogg"
+window.DMM = window.DMM || {};
+window.DMM.currentDmmSounds = [];
+let dmmInterval = null;
 
-];
+async function playRandomMusicLayers() {
+  // Stop any old sounds/timers
+  stopDynamicMusic();
 
-let currentHowls = [];
-let LOOP_DURATION_MS = 78000; // 1:18 in milliseconds
+  const basePath = "modules/dynamic-music-module/audio/";
+  const files = [
+    "Sylvan Stillness - Celli. Pizz.ogg",
+    "Sylvan Stillness - Harp.ogg",
+    "Sylvan Stillness - Horns.ogg",
+    "Sylvan Stillness - Pad.ogg",
+    "Sylvan Stillness - Vio. Section.ogg",
+    "Sylvan Stillness - Vio. Solo.ogg"
+  ];
+  const layerCount = Math.floor(Math.random() * 4) + 3; // 3–6
+  const selected = files.sort(() => 0.5 - Math.random()).slice(0, layerCount);
 
-function playLayeredLoop() {
-  // Stop and unload previous sounds
-  currentHowls.forEach(howl => howl.stop());
-  currentHowls = [];
+  console.log("DMM | Playing layers:", selected);
 
-  // Pick 3 to 6 unique tracks randomly
-  const shuffled = [...TRACKS].sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, Math.floor(Math.random() * 4) + 3); // 3 to 6
-
-  console.log(`DMM | Playing layers:`, selected.map(s => s.split("/").pop()));
-
-  // Create and play them in sync
-  for (let path of selected) {
-    let howl = new Howl({
-      src: [path],
+  // Create & play each via AudioHelper
+  for (const file of selected) {
+    const sound = foundry.audio.AudioHelper.play({
+      src: basePath + file,
+      autoplay: true,
       volume: 1.0,
-      loop: false, // We'll manually loop
-      html5: false
-    });
-    howl.play();
-    currentHowls.push(howl);
+      loop: false
+    }, true);
+    if (!sound) {
+      console.warn(`DMM | Failed to play sound: ${file}`);
+      continue;
+    }
+    if (sound) window.DMM.currentDmmSounds.push(sound);
   }
 
-  // Set timer for next switch
-  setTimeout(playLayeredLoop, LOOP_DURATION_MS);
+  // Queue the next run
+  dmmInterval = setTimeout(playRandomMusicLayers, 78000);
 }
 
-// Start playback when Foundry is ready
-Hooks.once("ready", () => {
-  console.log("%cDMM 🎵 READY", "color: lime; font-weight: bold;");
-  playLayeredLoop();
-});
+function stopDynamicMusic() {
+  // Stop all tracked sounds
+  for (const snd of window.DMM.currentDmmSounds) {
+    if (typeof snd.stop === "function") snd.stop();
+  }
+  window.DMM.currentDmmSounds = [];
+
+  // Clear the timer
+  if (dmmInterval !== null) {
+    clearTimeout(dmmInterval);
+    dmmInterval = null;
+  }
+
+  console.log("DMM | Playback stopped.");
+}

@@ -16,6 +16,7 @@
     "maximum": "13"
     },
   "scripts": [
+    "scripts/ui.js",
     "scripts/main.js",
     "scripts/music-player.js"
   ],
