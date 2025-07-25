@@ -16,9 +16,10 @@
     "maximum": "13"
     },
   "scripts": [
-    "scripts/ui.js",
+    "scripts/song-data.js",
     "scripts/main.js",
-    "scripts/music-player.js"
+    "scripts/music-player.js",
+    "scripts/ui.js"
   ],
   "styles": ["styles/style.css"],
   "esmodules": [],

@@ -11,17 +11,25 @@ class DMM_UI extends Application {
   }
 
   activateListeners(html) {
-    super.activateListeners(html);
+  super.activateListeners(html);
 
-    html.find("#dmm-play").on("click", (ev) => {
-      ev.preventDefault();
-      playRandomMusicLayers();
-    });
+  html.find("#dmm-play").on("click", async (ev) => {
+    ev.preventDefault();
 
+    // 1) Unlock the Web Audio context on that user click
+    if ( game.audio.context.state === "suspended" ) {
+      console.log("DMM ▶️ Resuming audio context");
+      await game.audio.context.resume();
+    }
 
-    html.find("#dmm-stop").on("click", (event) => {
-        event.preventDefault();
-        stopDynamicMusic(); 
-    });
-  }
+    // 2) Now safely kick off your music loop
+    playRandomMusicLayers();
+  });
+
+  html.find("#dmm-stop").on("click", (ev) => {
+    ev.preventDefault();
+    stopDynamicMusic(true);
+  });
+}
+
 }

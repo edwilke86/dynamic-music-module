@@ -20,6 +20,8 @@ Hooks.once("ready", () => {
         🎵 DYNAMIC MUSIC MODULE READY 🎵`;
 
   console.log(`%c${banner}`, "color: #00ccff; font-weight: bold; font-family: monospace;");
+
+  new DMM_UI().render(true);
 });
 
 
