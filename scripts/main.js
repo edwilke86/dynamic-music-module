@@ -1,8 +1,7 @@
 /**
- * dynamic Music Module
+ * Dynamic Music Module
  * Author: Neo Shain
     * Original Music: Dallas Scott Wilke
- * Description: Logs module load and prepares hooks for music adaptation logic.
  */
 
 Hooks.once("init", () => {

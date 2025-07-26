@@ -17,9 +17,9 @@
     },
   "scripts": [
     "scripts/song-data.js",
-    "scripts/main.js",
     "scripts/music-player.js",
-    "scripts/ui.js"
+    "scripts/ui.js",
+    "scripts/main.js"
   ],
   "styles": ["styles/style.css"],
   "esmodules": [],

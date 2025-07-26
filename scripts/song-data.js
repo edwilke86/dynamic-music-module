@@ -10,6 +10,7 @@ class LayeredSong {
    * @param {number} opts.duration  — Loop length in ms
    * @param {string} opts.key       — Musical key (e.g. “D”)
    * @param {string} opts.meter     — Time signature (e.g. “4/4”)
+   * @param {string} opts.tempo     — Tempo in BPM (e.g. “120”)
    */
   constructor({ name, tracks, tags, duration, key, meter, tempo }) {
     this.name     = name;
@@ -34,35 +35,34 @@ window.DMM.songLibrary = [
   new LayeredSong({
     name:    "Sylvan Stillness",
     tracks:  [
-      "Sylvan Stillness - Celli. Pizz.ogg",
-      "Sylvan Stillness - Harp.ogg",
-      "Sylvan Stillness - Horns.ogg",
-      "Sylvan Stillness - Pad.ogg",
-      "Sylvan Stillness - Vio. Section.ogg",
-      "Sylvan Stillness - Vio. Solo.ogg"
+      "audio/Sylvan Stillness/Celli. Pizz.ogg",
+      "audio/Sylvan Stillness/Harp.ogg",
+      "audio/Sylvan Stillness/Horns.ogg",
+      "audio/Sylvan Stillness/Pad.ogg",
+      "audio/Sylvan Stillness/Vio. Section.ogg",
+      "audio/Sylvan Stillness/Vio. Solo.ogg"
     ],
     tags:     ["fantasy","peaceful","forest","ambiance","pretty"],
     duration: 78000,   // 1m18s
     key:      "D",
-    meter:    "4/4"
+    meter:    "4/4",
+    tempo:    70
   }),
 
   new LayeredSong({
     name:    "Gnomish Playground",
     tracks: [
-        "Gnomish Playground/Gnomish Playground - 01 Start - Cello.ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - Double Bass.ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1(2).ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1(3).ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1(4).ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1(5).ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1(6).ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - St.1.ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - T. Trom.ogg",
-        "Gnomish Playground/Gnomish Playground - 01 Start - Viola.ogg"
+        "audio/Gnomish Playground/Cello.ogg",
+        "audio/Gnomish Playground/Flute.ogg",
+        "audio/Gnomish Playground/Double Bass.ogg",
+        "audio/Gnomish Playground/Tenor Trombone.ogg",
+        "audio/Gnomish Playground/Tuba.ogg",
+        "audio/Gnomish Playground/Vio. I.ogg",
+        "audio/Gnomish Playground/Vio. II.ogg",
+        "audio/Gnomish Playground/Viola.ogg"
     ],
     tags:     ["fantasy","playful","gnome","ambiance","happy"],
-    duration: 19000,   // 19s
+    duration: 19200,   // 19.200s
     key:      "C",
     meter:    "4/4",
     tempo:    100

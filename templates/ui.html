@@ -1,8 +1,56 @@
-<form class="flexcol">
-  <div class="form-group">
-    <button type="button" id="dmm-play"><i class="fas fa-play"></i> Play</button>
-  </div>
-  <div class="form-group">
-    <button type="button" id="dmm-stop"><i class="fas fa-stop"></i> Stop</button>
-  </div>
-</form>
+<div class="dmm-container flexcol">
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item active" data-tab="configure"><i class="fas fa-cog"></i> Configure</a>
+    <a class="item" data-tab="now-playing"><i class="fas fa-music"></i> Now Playing</a>
+  </nav>
+
+  <section class="content">
+    <!-- Configure Tab -->
+    <div class="tab active" data-tab="configure" data-group="primary">
+      <form class="flexcol">
+        <div class="form-group">
+          <label for="dmm-song-select">Choose a Song:</label>
+          <select id="dmm-song-select" name="song">
+            <option value="random">-- Random Song --</option>
+            {{#each songs}}
+            <option value="{{this.name}}">{{this.name}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="button" id="dmm-play"><i class="fas fa-play"></i> Play</button>
+        </div>
+        <div class="form-group">
+          <button type="button" id="dmm-stop"><i class="fas fa-stop"></i> Stop</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Now Playing Tab -->
+    <div class="tab" data-tab="now-playing" data-group="primary">
+      {{#if nowPlaying}}
+        <h3 class="song-title">{{nowPlaying.song.name}}</h3>
+        
+        <!-- Audible Tracks -->
+        <h4>Audible Tracks:</h4>
+        <ul class="track-list">
+          {{#each nowPlaying.audibleTracks}}
+            <li><i class="fas fa-volume-up"></i> {{this}}</li>
+          {{/each}}
+        </ul>
+
+        <!-- Tags -->
+        <div class="tags-container">
+          <h4>Tags:</h4>
+          <div class="tags">
+            {{#each nowPlaying.song.tags}}
+              <span class="tag">{{this}}</span>
+            {{/each}}
+          </div>
+        </div>
+      {{else}}
+        <p class="placeholder">Nothing is currently playing.</p>
+      {{/if}}
+    </div>
+  </section>
+</div>

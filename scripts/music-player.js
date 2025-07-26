@@ -1,29 +1,198 @@
-window.DMM                          = window.DMM || {};
-window.DMM.currentDmmSounds         = [];
-let dmmLoopTimeout                  = null;
-const FADE_DURATION_MS              = 2000;
-const FADE_STEPS                    = 40; 
-const FADE_INTERVAL_MS              = FADE_DURATION_MS / FADE_STEPS;
-const basePath                      = "modules/dynamic-music-module/audio/";
+window.DMM = window.DMM || {};
+window.DMM.playbackState = null; // This will hold all our playback info
+
+const FADE_DURATION_MS = 2000;
+const basePath = "modules/dynamic-music-module/";
 
 /**
- * Fade a Foundry Sound’s GainNode from `from`→`to` over `duration` ms.
- * @param {Sound} sound    A Foundry Sound instance
- * @param {number} from    Starting volume (0…1)
- * @param {number} to      Ending volume (0…1)
- * @param {number} duration Fade time in milliseconds
- * @param {Function} onComplete  Called after fade finishes
+ * Main function to start a dynamic song.
+ * This will start ALL tracks of the song, looping, and then schedule the dynamic fades.
+ * @param {string} songName - The name of the song from the song library.
  */
+async function playDynamicSong(songName) {
+  // 1. Stop any music that is currently playing.
+  stopDynamicMusic();
+
+  const song = window.DMM.songLibrary.find(s => s.name === songName);
+  if (!song) {
+    return console.error(`DMM | Song "${songName}" not found.`);
+  }
+
+  console.log(`DMM | Initializing "${song.name}"...`);
+
+  // 2. Initialize the global playback state object.
+  window.DMM.playbackState = {
+    song: song,
+    tracks: [], // Will be [{ sound: Sound, isAudible: boolean, src: string }]
+    timers: [],  // To keep track of our setTimeout IDs
+    startTime: Date.now() // Add this line to record when playback begins
+  };
+
+  // 3. Start ALL tracks simultaneously, at full volume, and set to loop.
+  const soundPromises = song.tracks.map(trackPath =>
+    foundry.audio.AudioHelper.play({
+      src: `${basePath}${trackPath}`,
+      volume: 1.0,
+      loop: true,
+      autoplay: true
+    }, true)
+  );
+
+  const sounds = await Promise.all(soundPromises);
+
+  // 4. Populate our state tracker. Initially, all tracks are audible.
+  for (let i = 0; i < sounds.length; i++) {
+    if (sounds[i]) {
+      window.DMM.playbackState.tracks.push({
+        sound: sounds[i],
+        isAudible: true,
+        src: song.tracks[i]
+      });
+    }
+  }
+
+  console.log(`DMM | All ${window.DMM.playbackState.tracks.length} tracks are playing.`);
+
+  // 5. Kick off the first transition schedule.
+  scheduleNextTransition();
+
+  // This function will be called recursively to create the dynamic loop.
+  function scheduleNextLoop() {
+    // Evaluate conditions for each track
+    window.DMM.playbackState.tracks.forEach(trackData => {
+      // ... your existing logic to fade tracks in/out ...
+    });
+
+    // --- ADD THIS LINE ---
+    // Broadcast that track states may have changed.
+    Hooks.callAll("dmm.trackUpdate");
+
+    // Schedule the next evaluation at the end of the current loop
+    const loopTimer = setTimeout(scheduleNextLoop, song.duration);
+    window.DMM.playbackState.timers.push(loopTimer);
+
+    // Broadcast that the song has just looped, so the UI can update.
+    Hooks.callAll("dmm.songLoop", window.DMM.playbackState.song);
+  }
+
+  // Start the first loop
+  scheduleNextLoop();
+}
 
 /**
- * Attempt to locate the AudioParam used for volume on a Foundry Sound,
- * then ramp it from `from`→`to` over `duration`ms.
+ * Schedules the two key moments for the next loop:
+ * 1. The decision point (halfway through the loop).
+ * 2. The fade execution point (just before the loop ends).
  */
+function scheduleNextTransition() {
+  const state = window.DMM.playbackState;
+  if (!state) return;
+
+  const songDuration = state.song.duration;
+  const halfwayPoint = songDuration / 2;
+  const fadeStartPoint = songDuration - (FADE_DURATION_MS / 2);
+
+  // Clear any old timers before setting new ones
+  state.timers.forEach(clearTimeout);
+  state.timers = [];
+
+  // a) Schedule the decision-making at the halfway point.
+  const decisionTimer = setTimeout(() => {
+    console.log(`DMM | [${state.song.name}] Mid-loop: Deciding next tracks...`);
+    decideNextTracks();
+  }, halfwayPoint);
+
+  // b) Schedule the fade execution right before the loop ends.
+  const fadeTimer = setTimeout(() => {
+    console.log(`DMM | [${state.song.name}] Pre-loop: Executing fades...`);
+    executeFades();
+    // Once fades are done, immediately schedule the *next* loop's transition
+    scheduleNextTransition();
+  }, fadeStartPoint);
+
+  state.timers.push(decisionTimer, fadeTimer);
+}
+
+/**
+ * Decides which tracks should be audible in the next loop and stores the plan.
+ * This function does NOT change any audio.
+ */
+function decideNextTracks() {
+  const state = window.DMM.playbackState;
+  if (!state) return;
+
+  const { tracks, song } = state;
+  const minLayers = Math.min(3, tracks.length);
+  const maxLayers = tracks.length;
+  const layerCount = Math.floor(Math.random() * (maxLayers - minLayers + 1)) + minLayers;
+
+  // Get a shuffled list of all track sources and pick the winners
+  const allTrackSrcs = tracks.map(t => t.src);
+  const nextAudibleSrcs = allTrackSrcs.sort(() => 0.5 - Math.random()).slice(0, layerCount);
+
+  // Store this plan in our state object for later use
+  state.nextAudibleSrcs = nextAudibleSrcs;
+  console.log(`DMM | Plan for next loop: ${nextAudibleSrcs.length} tracks.`, nextAudibleSrcs);
+}
+
+/**
+ * Compares the current state to the planned state and executes fades.
+ */
+function executeFades() {
+  const state = window.DMM.playbackState;
+  if (!state || !state.nextAudibleSrcs) return;
+
+  for (const track of state.tracks) {
+    const shouldBeAudible = state.nextAudibleSrcs.includes(track.src);
+
+    if (track.isAudible && !shouldBeAudible) {
+      // It's on, but should be off. Fade it OUT.
+      console.log(`DMM | Fading OUT: ${track.src}`);
+      fadeWebAudio(track.sound, 1.0, 0.0, FADE_DURATION_MS);
+      track.isAudible = false;
+    } else if (!track.isAudible && shouldBeAudible) {
+      // It's off, but should be on. Fade it IN.
+      console.log(`DMM | Fading IN: ${track.src}`);
+      fadeWebAudio(track.sound, 0.0, 1.0, FADE_DURATION_MS);
+      track.isAudible = true;
+    }
+  }
+
+  // --- MOVE THE HOOK CALL HERE ---
+  // Broadcast that track states have changed.
+  Hooks.callAll("dmm.trackUpdate");
+}
+
+/**
+ * Stops all music and clears the state.
+ */
+function stopDynamicMusic() {
+  if (!window.DMM.playbackState) return;
+
+  console.log("DMM | Stopping all dynamic music...");
+
+  const { tracks, timers } = window.DMM.playbackState;
+
+  // Clear all scheduled events
+  timers.forEach(clearTimeout);
+
+  // Fade out and stop all sounds
+  for (const track of tracks) {
+    fadeWebAudio(track.sound, track.sound.volume, 0.0, FADE_DURATION_MS, () => {
+      track.sound.stop();
+    });
+  }
+
+  // Clear the state
+  window.DMM.playbackState = null;
+}
+
+// You will need your fadeWebAudio function here as well.
 function fadeWebAudio(sound, from, to, duration, onComplete) {
   const ctx = game.audio.context;
+  if (!ctx) return;
   const now = ctx.currentTime;
 
-  // 1) Find an object on `sound` that has a `.gain` AudioParam
   let gainParam = null;
   for (const key of Object.getOwnPropertyNames(sound)) {
     const prop = sound[key];
@@ -32,7 +201,6 @@ function fadeWebAudio(sound, from, to, duration, onComplete) {
       break;
     }
   }
-  // 2) Fallback: maybe sound.source has it
   if (!gainParam && sound.source?.gain instanceof AudioParam) {
     gainParam = sound.source.gain;
   }
@@ -42,84 +210,12 @@ function fadeWebAudio(sound, from, to, duration, onComplete) {
     return onComplete?.();
   }
 
-  // 3) Cancel any scheduled ramps and set start value
   gainParam.cancelScheduledValues(now);
   gainParam.setValueAtTime(from, now);
-
-  // 4) Schedule a linear ramp to target
   gainParam.linearRampToValueAtTime(to, now + duration / 1000);
 
-  // 5) After the fade finishes, call onComplete
   if (typeof onComplete === "function") {
     setTimeout(onComplete, duration);
   }
-}
-
-
-
-async function playRandomMusicLayers() {
-  // 1) Stop any existing loop
-  stopDynamicMusic(true);
-
-  // 2) Choose a song (you could also filter by tags here)
-  const songs = window.DMM.songLibrary;
-  const song  = songs[Math.floor(Math.random() * songs.length)];
-  console.log(`DMM Playing Now playing “${song.name}” [${song.key} ${song.meter}]`);
-
-  // 3) Randomly pick 3–6 tracks from that song
-  const layerCount = Math.floor(Math.random() * 4) + 3;
-  const selected   = song.tracks.sort(() => 0.5 - Math.random()).slice(0, layerCount);
-  console.log("DMM Playing Selected layers:", selected);
-
-  // awaiting the Sound before fading it in
- window.DMM.currentDmmSounds = [];
-
-  // 5) Create & play each sound explicitly
-  for (const file of selected) {
-    // Use create() so we get back the Sound instance
-    const snd = await foundry.audio.AudioHelper.play({
-      src:      basePath + file,
-      loop:     true,
-      volume:   0,       // start muted for fade-in
-      autoplay: true,     // we'll call play() ourselves
-    });
-    if (!snd) continue;
-
-    // Start it for real:
-    snd.play();
-
-    // Now fade from 0→1
-    fadeWebAudio(snd, 0.0, 1.0, FADE_DURATION_MS);
-
-    // Track it so we can stop it later
-    window.DMM.currentDmmSounds.push(snd);
-  }
-
-  // 6) Schedule next loop
-  dmmLoopTimeout = setTimeout(playRandomMusicLayers, song.duration);
-}
-
-
-
-function stopDynamicMusic(fadeOut = false) {
-  if (dmmLoopTimeout) {
-    clearTimeout(dmmLoopTimeout);
-    dmmLoopTimeout = null;
-  }
-
-  if (fadeOut) {
-    for (const snd of window.DMM.currentDmmSounds) {
-      // snd is now a real Sound, so fadeWebAudio will find its gain param
-      fadeWebAudio(snd, 1.0, 0.0, FADE_DURATION_MS, () => snd.stop());
-    }
-  } else {
-    for (const snd of window.DMM.currentDmmSounds) {
-      snd.stop();
-    }
-  }
-
-
-  window.DMM.currentDmmSounds = [];
-  console.log("DMM | Playback stopped" + (fadeOut ? " with fade" : ""));
 }
 
