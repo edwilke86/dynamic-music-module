@@ -1,10 +1,12 @@
+/**
+ * UI class for the Dynamic Music Module
+ */
+
 class DMM_UI extends Application {
   constructor(options = {}) {
     super(options);
-    // Bind the listener method to this instance to ensure correct `this` context
-    // and to allow us to unregister the exact same function on close.
-    this._onSongLoop = this._onSongLoop.bind(this);
-    console.log("DMM | DMM_UI constructor has been called!");
+    this._onSongUpdate = this._onSongUpdate.bind(this);
+    console.log("%cDMM | DMM_UI constructor has been called!", "color: #00ccff;");
   }
 
   static get defaultOptions() {
@@ -13,7 +15,7 @@ class DMM_UI extends Application {
       title: "Dynamic Music Player",
       template: "modules/dynamic-music-module/templates/ui.html",
       width: 400,
-      height: "auto", // Let height be determined by content
+      height: "auto",
       resizable: true,
       popOut: true,
       classes: ["dmm"],
@@ -26,9 +28,21 @@ class DMM_UI extends Application {
     let nowPlayingData = null;
 
     if (playbackState && playbackState.song) {
-      const audibleTracks = playbackState.tracks
-        .filter(t => t.isAudible)
-        .map(t => t.src.split('/').pop()); // Just get the filename
+      // Get information about currently playing tracks
+      const audibleTracks = [];
+      
+      if (playbackState.tracks) {
+        for (const track of playbackState.tracks) {
+          if (track.isAudible) {
+            // Get the current volume (rounded to percentage)
+            const volume = track.sound ? Math.round(track.sound.volume * 100) : 0;
+            audibleTracks.push({
+              name: track.name,
+              volume: volume
+            });
+          }
+        }
+      }
 
       nowPlayingData = {
         song: playbackState.song,
@@ -45,18 +59,22 @@ class DMM_UI extends Application {
   activateListeners(html) {
     super.activateListeners(html);
 
+    // Play button
     html.find("#dmm-play").on("click", async (ev) => {
       ev.preventDefault();
       if (game.audio.context.state === "suspended") {
         await game.audio.context.resume();
       }
+      
+      // Get the selected song from the dropdown
       let selectedSongName = html.find("#dmm-song-select").val();
       
+      // Handle random song selection
       if (selectedSongName === "random") {
         const songs = window.DMM.songLibrary;
         if (songs && songs.length > 0) {
-          const randomSong = songs[Math.floor(Math.random() * songs.length)];
-          selectedSongName = randomSong.name;
+          const randomIndex = Math.floor(Math.random() * songs.length);
+          selectedSongName = songs[randomIndex].name;
         } else {
           ui.notifications.warn("DMM | No songs in the library to choose from.");
           return;
@@ -64,24 +82,25 @@ class DMM_UI extends Application {
       }
 
       if (selectedSongName) {
-        playDynamicSong(selectedSongName);
+        // Play the selected song
+        await window.DMM.playDynamicSong(selectedSongName);
       }
     });
 
-    html.find("#dmm-stop").on("click", (ev) => {
+    // Stop button
+    html.find("#dmm-stop").on("click", async (ev) => {
       ev.preventDefault();
-      stopDynamicMusic();
+      await window.DMM.stopAllMusic();
     });
 
-    // Listen for the custom hooks from the music player
-    Hooks.on("dmm.songLoop", this._onSongLoop);
-    Hooks.on("dmm.trackUpdate", this._onSongLoop); // Add listener for the new hook
+    // Register for update events
+    Hooks.on("dmm.songUpdate", this._onSongUpdate);
   }
 
   /**
-   * A callback function that fires when the song loops or tracks update.
+   * Callback for when song information updates
    */
-  _onSongLoop() {
+  _onSongUpdate() {
     // Only render if the window is actually open
     if (this._state > 0) { 
       this.render();
@@ -89,9 +108,11 @@ class DMM_UI extends Application {
   }
 
   async close(options) {
-    // Important: turn off the hook listeners when the window is closed to prevent memory leaks.
-    Hooks.off("dmm.songLoop", this._onSongLoop);
-    Hooks.off("dmm.trackUpdate", this._onSongLoop); // Add this line
+    // Remove listeners when window is closed
+    Hooks.off("dmm.songUpdate", this._onSongUpdate);
     return super.close(options);
   }
 }
+
+window.DMM = window.DMM || {};
+window.DMM.UI = DMM_UI;

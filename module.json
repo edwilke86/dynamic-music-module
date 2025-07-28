@@ -2,7 +2,7 @@
   "id": "dynamic-music-module",
   "title": "Dynamic Music Module",
   "description": "DMM is a Foundry VTT module that provides an immersive, dynamic soundtrack that reacts to combat, health, location, and more.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "authors": [
     {
       "name": "NeoShain",
@@ -14,9 +14,12 @@
     "minimum": 11,
     "verified": "13",
     "maximum": "13"
-    },
+  },
   "scripts": [
+    "scripts/DMM_Core.js",
+    "scripts/music-theory.js",
     "scripts/song-data.js",
+    "scripts/playlist-import.js",
     "scripts/music-player.js",
     "scripts/ui.js",
     "scripts/main.js"
@@ -28,5 +31,6 @@
   "socket": true,
   "url": "https://github.com/edwilke86/Dynamic-Music-Module",
   "manifest": "https://raw.githubusercontent.com/edwilke86/Dynamic-Music-Module/main/module.json",
-  "download": "https://github.com/edwilke86/Dynamic-Music-Module/archive/refs/heads/main.zip"
+  "download": "https://github.com/edwilke86/Dynamic-Music-Module/archive/refs/heads/main.zip",
+  "dependencies": []
 }

@@ -1,221 +1,211 @@
-window.DMM = window.DMM || {};
-window.DMM.playbackState = null; // This will hold all our playback info
+/**
+ * Music player functionality
+ * This uses Foundry's built-in playlist functionality directly
+ */
 
-const FADE_DURATION_MS = 2000;
-const basePath = "modules/dynamic-music-module/";
+window.DMM = window.DMM || {};
 
 /**
- * Main function to start a dynamic song.
- * This will start ALL tracks of the song, looping, and then schedule the dynamic fades.
- * @param {string} songName - The name of the song from the song library.
+ * Play a specific song by name from the playlist
+ * @param {string} songName - The name of the song to play
  */
 async function playDynamicSong(songName) {
-  // 1. Stop any music that is currently playing.
-  stopDynamicMusic();
-
-  const song = window.DMM.songLibrary.find(s => s.name === songName);
-  if (!song) {
-    return console.error(`DMM | Song "${songName}" not found.`);
+  // First, stop any currently playing playlists
+  await stopAllMusic();
+  
+  // Find the requested playlist
+  const playlist = game.playlists.find(p => p.name === songName);
+  if (!playlist) {
+    ui.notifications.error(`Song "${songName}" not found in playlists.`);
+    return;
   }
-
-  console.log(`DMM | Initializing "${song.name}"...`);
-
-  // 2. Initialize the global playback state object.
+  
+  // Find the corresponding song data in our library
+  const songData = window.DMM.songLibrary.find(s => s.name === songName);
+  if (!songData) {
+    ui.notifications.warn(`Song data for "${songName}" not found, playing anyway.`);
+    return;
+  }
+  
+  // Play the playlist with all tracks initially
+  console.log(`%cDynamic Music Module | Playing: ${songName}`, "color: #00ccff;");
+  await playlist.playAll();
+  
+  // Save playback state
   window.DMM.playbackState = {
-    song: song,
-    tracks: [], // Will be [{ sound: Sound, isAudible: boolean, src: string }]
-    timers: [],  // To keep track of our setTimeout IDs
-    startTime: Date.now() // Add this line to record when playback begins
+    playlist: playlist,
+    song: songData,
+    tracks: [], // Will be populated with track info
+    timers: [],
+    startTime: Date.now()
   };
 
-  // 3. Start ALL tracks simultaneously, at full volume, and set to loop.
-  const soundPromises = song.tracks.map(trackPath =>
-    foundry.audio.AudioHelper.play({
-      src: `${basePath}${trackPath}`,
-      volume: 1.0,
-      loop: true,
-      autoplay: true
-    }, true)
-  );
-
-  const sounds = await Promise.all(soundPromises);
-
-  // 4. Populate our state tracker. Initially, all tracks are audible.
-  for (let i = 0; i < sounds.length; i++) {
-    if (sounds[i]) {
+  // Populate the track information
+  for (const sound of playlist.sounds) {
+    if (sound.playing && sound.sound) {
       window.DMM.playbackState.tracks.push({
-        sound: sounds[i],
+        id: sound.id,
+        soundId: sound.sound.id,
+        sound: sound.sound,
         isAudible: true,
-        src: song.tracks[i]
+        name: sound.name
       });
     }
   }
 
-  console.log(`DMM | All ${window.DMM.playbackState.tracks.length} tracks are playing.`);
-
-  // 5. Kick off the first transition schedule.
-  scheduleNextTransition();
-
-  // This function will be called recursively to create the dynamic loop.
-  function scheduleNextLoop() {
-    // Evaluate conditions for each track
-    window.DMM.playbackState.tracks.forEach(trackData => {
-      // ... your existing logic to fade tracks in/out ...
-    });
-
-    // --- ADD THIS LINE ---
-    // Broadcast that track states may have changed.
-    Hooks.callAll("dmm.trackUpdate");
-
-    // Schedule the next evaluation at the end of the current loop
-    const loopTimer = setTimeout(scheduleNextLoop, song.duration);
-    window.DMM.playbackState.timers.push(loopTimer);
-
-    // Broadcast that the song has just looped, so the UI can update.
-    Hooks.callAll("dmm.songLoop", window.DMM.playbackState.song);
-  }
-
-  // Start the first loop
-  scheduleNextLoop();
+  // Schedule the first randomization
+  scheduleNextTransition(songData.duration);
+  
+  // Call hook to update UI
+  Hooks.callAll("dmm.songUpdate");
 }
 
 /**
- * Schedules the two key moments for the next loop:
- * 1. The decision point (halfway through the loop).
- * 2. The fade execution point (just before the loop ends).
+ * Schedule the next track randomization transition
+ * @param {number} songDuration - Duration of the song in milliseconds
  */
-function scheduleNextTransition() {
+function scheduleNextTransition(songDuration) {
   const state = window.DMM.playbackState;
   if (!state) return;
 
-  const songDuration = state.song.duration;
+  // Clear any previous timers
+  if (state.timers.length) {
+    for (const timer of state.timers) {
+      clearTimeout(timer);
+    }
+    state.timers = [];
+  }
+
+  const FADE_DURATION = window.DMM.CONSTANTS.FADE_DURATION_MS;
   const halfwayPoint = songDuration / 2;
-  const fadeStartPoint = songDuration - (FADE_DURATION_MS / 2);
+  const fadePoint = songDuration - FADE_DURATION;
 
-  // Clear any old timers before setting new ones
-  state.timers.forEach(clearTimeout);
-  state.timers = [];
-
-  // a) Schedule the decision-making at the halfway point.
+  // Timer for planning the next transition halfway through
   const decisionTimer = setTimeout(() => {
-    console.log(`DMM | [${state.song.name}] Mid-loop: Deciding next tracks...`);
-    decideNextTracks();
+    console.log(`%cDMM | Mid-loop: Planning next transition...`, "color: #00ccff;");
+    planNextTrackMix();
   }, halfwayPoint);
 
-  // b) Schedule the fade execution right before the loop ends.
+  // Timer for executing the transition near the end of the loop
   const fadeTimer = setTimeout(() => {
-    console.log(`DMM | [${state.song.name}] Pre-loop: Executing fades...`);
-    executeFades();
-    // Once fades are done, immediately schedule the *next* loop's transition
-    scheduleNextTransition();
-  }, fadeStartPoint);
+    console.log(`%cDMM | End-loop: Executing transitions...`, "color: #00ccff;");
+    executeTrackMix();
+    
+    // Schedule the next round of transitions for the next loop
+    const loopTimer = setTimeout(() => {
+      scheduleNextTransition(songDuration);
+    }, FADE_DURATION);
+    
+    state.timers.push(loopTimer);
+  }, fadePoint);
 
   state.timers.push(decisionTimer, fadeTimer);
 }
 
 /**
- * Decides which tracks should be audible in the next loop and stores the plan.
- * This function does NOT change any audio.
+ * Plan which tracks should be audible in the next loop
  */
-function decideNextTracks() {
+function planNextTrackMix() {
   const state = window.DMM.playbackState;
-  if (!state) return;
+  if (!state || !state.tracks || state.tracks.length === 0) return;
 
-  const { tracks, song } = state;
-  const minLayers = Math.min(3, tracks.length);
-  const maxLayers = tracks.length;
-  const layerCount = Math.floor(Math.random() * (maxLayers - minLayers + 1)) + minLayers;
-
-  // Get a shuffled list of all track sources and pick the winners
-  const allTrackSrcs = tracks.map(t => t.src);
-  const nextAudibleSrcs = allTrackSrcs.sort(() => 0.5 - Math.random()).slice(0, layerCount);
-
-  // Store this plan in our state object for later use
-  state.nextAudibleSrcs = nextAudibleSrcs;
-  console.log(`DMM | Plan for next loop: ${nextAudibleSrcs.length} tracks.`, nextAudibleSrcs);
+  const tracks = state.tracks;
+  
+  // Decide how many tracks to make audible (minimum 2 or half, whichever is larger)
+  const minTracks = Math.max(2, Math.floor(tracks.length / 2));
+  const maxTracks = tracks.length;
+  const tracksToPlay = Math.floor(Math.random() * (maxTracks - minTracks + 1)) + minTracks;
+  
+  // Shuffle the tracks and pick the first N
+  const shuffledIndices = Array.from({length: tracks.length}, (_, i) => i).sort(() => Math.random() - 0.5);
+  const selectedIndices = shuffledIndices.slice(0, tracksToPlay);
+  
+  // Store the plan for later execution
+  state.nextTrackMix = {
+    audibleIndices: selectedIndices,
+    volumes: selectedIndices.map(() => 0.33 + Math.random() * 0.67) // Random volume between 33% and 100%
+  };
+  
+  console.log(`%cDMM | Next mix will have ${tracksToPlay} audible tracks`, "color: #00ccff;");
 }
 
 /**
- * Compares the current state to the planned state and executes fades.
+ * Execute the planned track mix by fading tracks in/out
  */
-function executeFades() {
+async function executeTrackMix() {
   const state = window.DMM.playbackState;
-  if (!state || !state.nextAudibleSrcs) return;
+  if (!state || !state.tracks || !state.nextTrackMix) return;
 
-  for (const track of state.tracks) {
-    const shouldBeAudible = state.nextAudibleSrcs.includes(track.src);
+  const FADE_DURATION = window.DMM.CONSTANTS.FADE_DURATION_MS;
+  const { audibleIndices, volumes } = state.nextTrackMix;
 
-    if (track.isAudible && !shouldBeAudible) {
-      // It's on, but should be off. Fade it OUT.
-      console.log(`DMM | Fading OUT: ${track.src}`);
-      fadeWebAudio(track.sound, 1.0, 0.0, FADE_DURATION_MS);
+  // Update each track
+  for (let i = 0; i < state.tracks.length; i++) {
+    const track = state.tracks[i];
+    const sound = track.sound;
+    if (!sound) continue;
+    
+    // Should this track be audible?
+    const willBeAudible = audibleIndices.includes(i);
+    
+    if (willBeAudible) {
+      // Set a new random volume between 66% and 100%
+      const volumeIndex = audibleIndices.indexOf(i);
+      const targetVolume = volumes[volumeIndex]; 
+      
+      if (!track.isAudible) {
+        // Fade in if previously inaudible
+        console.log(`%cDMM | Fading IN track: ${track.name} (${Math.round(targetVolume * 100)}%)`, "color: #00ccff;");
+        await sound.fade(targetVolume, { duration: FADE_DURATION });
+        track.isAudible = true;
+      } else {
+        // Just adjust volume if already playing
+        console.log(`%cDMM | Adjusting volume: ${track.name} (${Math.round(targetVolume * 100)}%)`, "color: #00ccff;");
+        await sound.fade(targetVolume, { duration: FADE_DURATION });
+      }
+    } 
+    else if (track.isAudible) {
+      // Fade out if previously audible but not in the new mix
+      console.log(`%cDMM | Fading OUT track: ${track.name}`, "color: #00ccff;");
+      await sound.fade(0.0, { duration: FADE_DURATION });
       track.isAudible = false;
-    } else if (!track.isAudible && shouldBeAudible) {
-      // It's off, but should be on. Fade it IN.
-      console.log(`DMM | Fading IN: ${track.src}`);
-      fadeWebAudio(track.sound, 0.0, 1.0, FADE_DURATION_MS);
-      track.isAudible = true;
     }
   }
-
-  // --- MOVE THE HOOK CALL HERE ---
-  // Broadcast that track states have changed.
-  Hooks.callAll("dmm.trackUpdate");
+  
+  // Update UI
+  Hooks.callAll("dmm.songUpdate");
 }
 
 /**
- * Stops all music and clears the state.
+ * Stop all currently playing music
  */
-function stopDynamicMusic() {
-  if (!window.DMM.playbackState) return;
-
-  console.log("DMM | Stopping all dynamic music...");
-
-  const { tracks, timers } = window.DMM.playbackState;
-
-  // Clear all scheduled events
-  timers.forEach(clearTimeout);
-
-  // Fade out and stop all sounds
-  for (const track of tracks) {
-    fadeWebAudio(track.sound, track.sound.volume, 0.0, FADE_DURATION_MS, () => {
-      track.sound.stop();
-    });
-  }
-
-  // Clear the state
-  window.DMM.playbackState = null;
-}
-
-// You will need your fadeWebAudio function here as well.
-function fadeWebAudio(sound, from, to, duration, onComplete) {
-  const ctx = game.audio.context;
-  if (!ctx) return;
-  const now = ctx.currentTime;
-
-  let gainParam = null;
-  for (const key of Object.getOwnPropertyNames(sound)) {
-    const prop = sound[key];
-    if (prop && prop.gain instanceof AudioParam) {
-      gainParam = prop.gain;
-      break;
+async function stopAllMusic() {
+  // Stop all timers
+  if (window.DMM.playbackState && window.DMM.playbackState.timers) {
+    for (const timer of window.DMM.playbackState.timers) {
+      clearTimeout(timer);
     }
   }
-  if (!gainParam && sound.source?.gain instanceof AudioParam) {
-    gainParam = sound.source.gain;
+  
+  // Get all playing playlists
+  const playingPlaylists = game.playlists.filter(p => p.playing);
+  
+  // Stop each one
+  for (const playlist of playingPlaylists) {
+    console.log(`%cDynamic Music Module | Stopping: ${playlist.name}`, "color: #00ccff;");
+    await playlist.stopAll();
   }
-
-  if (!gainParam) {
-    console.warn("DMM | Could not find any AudioParam.gain on", sound);
-    return onComplete?.();
-  }
-
-  gainParam.cancelScheduledValues(now);
-  gainParam.setValueAtTime(from, now);
-  gainParam.linearRampToValueAtTime(to, now + duration / 1000);
-
-  if (typeof onComplete === "function") {
-    setTimeout(onComplete, duration);
-  }
+  
+  // Clear playback state
+  window.DMM.playbackState = null;
+  
+  // Call hook to update UI
+  Hooks.callAll("dmm.songUpdate");
 }
+
+// Attach functions to the DMM object
+window.DMM.playDynamicSong = playDynamicSong;
+window.DMM.stopAllMusic = stopAllMusic;
+
+console.log("%cDynamic Music Module | Music Player Initialized", "color: #00ccff;");
 

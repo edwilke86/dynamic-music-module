@@ -35,7 +35,7 @@
         <h4>Audible Tracks:</h4>
         <ul class="track-list">
           {{#each nowPlaying.audibleTracks}}
-            <li><i class="fas fa-volume-up"></i> {{this}}</li>
+            <li><i class="fas fa-volume-up"></i> {{this.name}} <span class="volume-indicator">({{this.volume}}%)</span></li>
           {{/each}}
         </ul>
 
