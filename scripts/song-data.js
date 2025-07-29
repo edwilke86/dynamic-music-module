@@ -157,7 +157,7 @@ window.DMM.combatSongLibrary = [
       // Intensity 1: The core rhythm and foundation
       { path: "audio/The First Battle/Double Bass.ogg", intensity: 1 },
       { path: "audio/The First Battle/Tbones.ogg", intensity: 1 },
-      { path: "audio/The First Battle/Basoon.ogg", intensity: 1 },
+      { path: "audio/The First Battle/Bassoon.ogg", intensity: 1 },
       // Intensity 2: Main melodic and harmonic content
       { path: "audio/The First Battle/Timpani.ogg", intensity: 2 },
       { path: "audio/The First Battle/Violins.ogg", intensity: 2 },
