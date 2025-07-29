@@ -68,6 +68,39 @@ class Transition {
   }
 }
 
+/**
+ * A layered song specifically for combat, with intensity-based tracks.
+ */
+class LayeredCombatSong extends LayeredSong {
+  /**
+   * @param {Object} opts
+   * @param {string} opts.name      — A display name
+   * @param {Array<{path: string, intensity: number}>} opts.tracks - Array of track objects with intensity levels
+   * @param {string[]} opts.tags    — Genre/mood/location tags
+   * @param {number} opts.duration  — Loop length in ms
+   * @param {string} opts.key       — Musical key (e.g. "D")
+   * @param {string} opts.meter     — Time signature (e.g. "4/4")
+   * @param {string} opts.tempo     — Tempo in BPM (e.g. "120")
+   */
+  constructor({ name, tracks, tags, duration, key, meter, tempo }) {
+    // Pass all but tracks up to the parent LayeredSong constructor
+    super({ name, tracks: [], tags, duration, key, meter, tempo });
+    // Override tracks with the new format
+    this.tracks = tracks;
+  }
+
+  /**
+   * Gets all track paths for a given intensity level or lower.
+   * @param {number} level - The current intensity level (1-4)
+   * @returns {string[]} An array of track paths to play.
+   */
+  getTracksForIntensity(level) {
+    return this.tracks
+      .filter(track => track.intensity <= level)
+      .map(track => track.path);
+  }
+}
+
 // Song Library
 // This is a collection of LayeredSong instances, each representing a unique song.
 // You can add more songs by creating new LayeredSong instances and adding them to this array.
@@ -113,19 +146,28 @@ window.DMM.songLibrary = [
     tempo:    100
   }),
 
-  new LayeredSong({
+  // "The First Battle" has been moved to the combat library below.
+];
+
+// Combat Song Library
+window.DMM.combatSongLibrary = [
+  new LayeredCombatSong({
     name:    "The First Battle",
     tracks:  [
-      "audio/The First Battle/Basoon.ogg",
-      "audio/The First Battle/Cello.ogg",
-      "audio/The First Battle/Double Bass.ogg",
-      "audio/The First Battle/Gong.ogg",
-      "audio/The First Battle/Horn Layer One.ogg",
-      "audio/The First Battle/Oboe.ogg",
-      "audio/The First Battle/Violins.ogg",
-      "audio/The First Battle/Tbones.ogg",
-      "audio/The First Battle/Tympani.ogg",
-      "audio/The First Battle/Tuba.ogg"
+      // Intensity 1: The core rhythm and foundation
+      { path: "audio/The First Battle/Double Bass.ogg", intensity: 1 },
+      { path: "audio/The First Battle/Tbones.ogg", intensity: 1 },
+      { path: "audio/The First Battle/Basoon.ogg", intensity: 1 },
+      // Intensity 2: Main melodic and harmonic content
+      { path: "audio/The First Battle/Timpani.ogg", intensity: 2 },
+      { path: "audio/The First Battle/Violins.ogg", intensity: 2 },
+      { path: "audio/The First Battle/Tuba.ogg", intensity: 2 },
+      // Intensity 3: More powerful elements and percussion
+      { path: "audio/The First Battle/Horn Layer One.ogg", intensity: 3 },
+      { path: "audio/The First Battle/Cello.ogg", intensity: 3 },
+      // Intensity 4: Dramatic flourishes for the climax
+      { path: "audio/The First Battle/Gong.ogg", intensity: 4 },
+      { path: "audio/The First Battle/Oboe.ogg", intensity: 4 }
     ],
     tags:     ["intense","combat","orchestra","fight","boss"],
     duration: 153600,   // 2m33s
@@ -133,6 +175,12 @@ window.DMM.songLibrary = [
     meter:    "4/4",
     tempo:    100
   }),
+];
+
+// Combined library for easier lookups
+window.DMM.allSongs = [
+  ...(window.DMM.songLibrary || []),
+  ...(window.DMM.combatSongLibrary || [])
 ];
 
 

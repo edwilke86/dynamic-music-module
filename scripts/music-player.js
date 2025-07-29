@@ -21,9 +21,10 @@ async function playDynamicSong(songName) {
   }
   
   // Find the corresponding song data in our library
-  const songData = window.DMM.songLibrary.find(s => s.name === songName);
+  const songData = window.DMM.allSongs.find(s => s.name === songName);
   if (!songData) {
     ui.notifications.warn(`Song data for "${songName}" not found, playing anyway.`);
+    await playlist.playAll();
     return;
   }
   
@@ -53,7 +54,19 @@ async function playDynamicSong(songName) {
     }
   }
 
-  // Schedule the first randomization
+  // If it's a combat song, immediately set tracks for the current intensity.
+  // Otherwise, schedule the normal randomization.
+  if (songData instanceof LayeredCombatSong) {
+    // Mute all tracks instantly before fading in the correct ones.
+    for (const track of window.DMM.playbackState.tracks) {
+      track.sound.volume = 0;
+      track.isAudible = false;
+    }
+    // Fade in tracks for the current intensity level.
+    await updateCombatIntensity(window.DMM.intensityLevel || 1);
+  }
+  
+  // Schedule the first randomization for all song types.
   scheduleNextTransition(songData.duration);
   
   // Call hook to update UI
@@ -103,22 +116,87 @@ function scheduleNextTransition(songDuration) {
 }
 
 /**
+ * Updates track volumes based on the current combat intensity level.
+ * Fades tracks in or out to match the required intensity.
+ * @param {number} newIntensity - The new intensity level (1-4).
+ */
+async function updateCombatIntensity(newIntensity) {
+  const state = window.DMM.playbackState;
+  if (!state || !state.tracks || !(state.song instanceof LayeredCombatSong)) return;
+
+  console.log(`%cDMM | Updating combat intensity to: ${newIntensity}`, "color: #ff8c00;");
+
+  const FADE_DURATION = window.DMM.CONSTANTS.FADE_DURATION_MS;
+  const tracksForIntensity = state.song.getTracksForIntensity(newIntensity);
+
+  for (const track of state.tracks) {
+    const sound = track.sound;
+    if (!sound) continue;
+
+    // The path in the sound object is the full URL, so we need to check if it ends with the track path.
+    const shouldBeAudible = tracksForIntensity.some(p => sound.src.endsWith(p));
+
+    if (shouldBeAudible && !track.isAudible) {
+      // Fade in
+      const targetVolume = 0.66 + Math.random() * 0.34; // 66% - 100%
+      console.log(`%cDMM | Fading IN track for intensity ${newIntensity}: ${track.name}`, "color: #00ccff;");
+      await sound.fade(targetVolume, { duration: FADE_DURATION });
+      track.isAudible = true;
+    } else if (shouldBeAudible && track.isAudible) {
+      // Already audible, just adjust volume for variety
+      const targetVolume = 0.66 + Math.random() * 0.34; // 66% - 100%
+      console.log(`%cDMM | Adjusting volume for intensity ${newIntensity}: ${track.name}`, "color: #00ccff;");
+      await sound.fade(targetVolume, { duration: FADE_DURATION });
+    } else if (!shouldBeAudible && track.isAudible) {
+      // Fade out
+      console.log(`%cDMM | Fading OUT track for intensity ${newIntensity}: ${track.name}`, "color: #00ccff;");
+      await sound.fade(0.0, { duration: FADE_DURATION });
+      track.isAudible = false;
+    }
+  }
+  
+  // Update UI
+  Hooks.callAll("dmm.songUpdate");
+}
+
+/**
  * Plan which tracks should be audible in the next loop
  */
 function planNextTrackMix() {
   const state = window.DMM.playbackState;
   if (!state || !state.tracks || state.tracks.length === 0) return;
 
-  const tracks = state.tracks;
+  let availableTracks = state.tracks;
+  let availableIndices = Array.from({length: availableTracks.length}, (_, i) => i);
+
+  // If it's a combat song, filter tracks by the current intensity level
+  if (state.song instanceof LayeredCombatSong) {
+    const intensity = window.DMM.intensityLevel || 1;
+    const validTrackPaths = state.song.getTracksForIntensity(intensity);
+    
+    availableIndices = [];
+    for (let i = 0; i < state.tracks.length; i++) {
+      const track = state.tracks[i];
+      if (validTrackPaths.some(p => track.sound.src.endsWith(p))) {
+        availableIndices.push(i);
+      }
+    }
+    
+    // If no tracks are available at this intensity, do nothing.
+    if (availableIndices.length === 0) {
+      state.nextTrackMix = { audibleIndices: [], volumes: [] };
+      return;
+    }
+  }
   
-  // Decide how many tracks to make audible (minimum 2 or half, whichever is larger)
-  const minTracks = Math.max(2, Math.floor(tracks.length / 2));
-  const maxTracks = tracks.length;
-  const tracksToPlay = Math.floor(Math.random() * (maxTracks - minTracks + 1)) + minTracks;
+  // Decide how many tracks to make audible from the available pool
+  const minTracks = Math.max(1, Math.floor(availableIndices.length / 2));
+  const maxTracks = availableIndices.length;
+  const tracksToPlayCount = Math.floor(Math.random() * (maxTracks - minTracks + 1)) + minTracks;
   
-  // Shuffle the tracks and pick the first N
-  const shuffledIndices = Array.from({length: tracks.length}, (_, i) => i).sort(() => Math.random() - 0.5);
-  const selectedIndices = shuffledIndices.slice(0, tracksToPlay);
+  // Shuffle the available tracks and pick the first N
+  const shuffledIndices = availableIndices.sort(() => Math.random() - 0.5);
+  const selectedIndices = shuffledIndices.slice(0, tracksToPlayCount);
   
   // Store the plan for later execution
   state.nextTrackMix = {
@@ -126,7 +204,7 @@ function planNextTrackMix() {
     volumes: selectedIndices.map(() => 0.33 + Math.random() * 0.67) // Random volume between 33% and 100%
   };
   
-  console.log(`%cDMM | Next mix will have ${tracksToPlay} audible tracks`, "color: #00ccff;");
+  console.log(`%cDMM | Next mix will have ${tracksToPlayCount} audible tracks`, "color: #00ccff;");
 }
 
 /**
@@ -206,6 +284,7 @@ async function stopAllMusic() {
 // Attach functions to the DMM object
 window.DMM.playDynamicSong = playDynamicSong;
 window.DMM.stopAllMusic = stopAllMusic;
+window.DMM.updateCombatIntensity = updateCombatIntensity;
 
 console.log("%cDynamic Music Module | Music Player Initialized", "color: #00ccff;");
 

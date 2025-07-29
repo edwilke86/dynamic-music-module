@@ -23,6 +23,15 @@
         <div class="form-group">
           <button type="button" id="dmm-stop"><i class="fas fa-stop"></i> Stop</button>
         </div>
+
+        <!-- Add this section for the DMM Intensity Slider -->
+        <div class="form-group">
+          <label>Combat Intensity</label>
+          <div class="form-fields">
+            <input type="range" id="dmm-intensity-slider" name="intensity" min="1" max="4" value="{{intensityLevel}}">
+            <span id="dmm-intensity-label">{{intensityLevel}}</span>
+          </div>
+        </div>
       </form>
     </div>
 

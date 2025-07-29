@@ -81,3 +81,44 @@
   border-radius: 4px;
   white-space: nowrap;
 }
+
+/* Intensity Slider Styles */
+#dmm-intensity-controls {
+  flex: 1;
+  align-items: center;
+  padding: 0 5px 5px;
+  border-bottom: 1px solid #BBB;
+  margin-bottom: 5px;
+}
+
+#dmm-intensity-label {
+  font-weight: bold;
+  transition: color 0.3s ease; /* Smooth color transition */
+  background-color: #191813; /* Dark background for the box */
+  border: 1px solid #444;     /* A subtle border */
+  padding: 3px 8px;           /* Padding to create space inside the box */
+  border-radius: 5px;         /* Rounded corners for the box */
+  text-align: left;          /* Right-align the number */
+  min-width: 1em;             /* Ensure the box has a minimum width */
+}
+
+.dmm-slider {
+  flex: 1;
+}
+
+/* Intensity Level Colors */
+.dmm-intensity-1 {
+  color: white;
+}
+
+.dmm-intensity-2 {
+  color: lightgreen;
+}
+
+.dmm-intensity-3 {
+  color: yellow;
+}
+
+.dmm-intensity-4 {
+  color: red;
+}

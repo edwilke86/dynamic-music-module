@@ -3,7 +3,6 @@
  */
 
 async function importSongsAsPlaylists() {
-  const FADE_DURATION_MS = window.DMM.CONSTANTS.FADE_DURATION_MS;
   
   // --- Folder Setup ---
   const PARENT_FOLDER_NAME = "Dynamic Music Module";
@@ -29,7 +28,8 @@ async function importSongsAsPlaylists() {
   }
 
   // --- Song Playlist Import ---
-  for (const song of window.DMM.songLibrary) {
+  // Use the combined 'allSongs' library to ensure all songs are imported.
+  for (const song of window.DMM.allSongs) {
     let playlist = game.playlists.find(p => p.name === song.name);
 
     // Determine folder
@@ -42,23 +42,26 @@ async function importSongsAsPlaylists() {
         name: song.name,
         description: `Tags: ${song.tags.join(", ")}`,
         mode: CONST.PLAYLIST_MODES.SIMULTANEOUS,
-        folder: targetFolderId,
-        fade: FADE_DURATION_MS
+        folder: targetFolderId
       });
       console.log(`%cDynamic Music Module | Created playlist: ${song.name}`, "color: #00ccff;");
     } else {
       // Ensure existing playlists are in the correct folder and have updated metadata
       await playlist.update({
         folder: targetFolderId,
-        description: `Tags: ${song.tags.join(", ")}`,
-        fade: FADE_DURATION_MS
+        description: `Tags: ${song.tags.join(", ")}`
       });
     }
 
     const existingSoundPaths = playlist.sounds.map(s => s.path);
     const soundsToAdd = [];
 
-    for (const trackPath of song.tracks) {
+    // Handle both simple track arrays (string[]) and combat track objects ({path, intensity})
+    const trackPaths = song instanceof LayeredCombatSong
+      ? song.tracks.map(t => t.path)
+      : song.tracks;
+
+    for (const trackPath of trackPaths) {
       const fullPath = `modules/dynamic-music-module/${trackPath}`;
       if (!existingSoundPaths.includes(fullPath)) {
         soundsToAdd.push({
@@ -83,15 +86,13 @@ async function importSongsAsPlaylists() {
       name: "Links",
       description: "Collection of all link tracks for musical transitions.",
       mode: CONST.PLAYLIST_MODES.SEQUENTIAL,
-      folder: folderIds.Links,
-      fade: FADE_DURATION_MS
+      folder: folderIds.Links
     });
     console.log(`%cDynamic Music Module | Created playlist: Links`, "color: #00ccff;");
   } else {
     await linkPlaylist.update({
       folder: folderIds.Links,
-      description: "Collection of all link tracks for musical transitions.",
-      fade: FADE_DURATION_MS
+      description: "Collection of all link tracks for musical transitions."
     });
   }
 

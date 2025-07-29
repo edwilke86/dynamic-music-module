@@ -23,37 +23,23 @@ class DMM_UI extends Application {
     });
   }
 
+  /**
+   * Prepares data for the UI template.
+   */
   getData() {
-    const playbackState = window.DMM.playbackState;
-    let nowPlayingData = null;
+    const data = super.getData();
+    const currentPlayer = window.DMM.musicPlayer;
 
-    if (playbackState && playbackState.song) {
-      // Get information about currently playing tracks
-      const audibleTracks = [];
-      
-      if (playbackState.tracks) {
-        for (const track of playbackState.tracks) {
-          if (track.isAudible) {
-            // Get the current volume (rounded to percentage)
-            const volume = track.sound ? Math.round(track.sound.volume * 100) : 0;
-            audibleTracks.push({
-              name: track.name,
-              volume: volume
-            });
-          }
-        }
-      }
-
-      nowPlayingData = {
-        song: playbackState.song,
-        audibleTracks: audibleTracks
-      };
+    data.songs = window.DMM.allSongs || [];
+    data.intensityLevel = window.DMM.intensityLevel || 1;
+    
+    if (currentPlayer && currentPlayer.currentSong) {
+      data.isCombatSongPlaying = currentPlayer.currentSong instanceof LayeredCombatSong;
+    } else {
+      data.isCombatSongPlaying = false;
     }
 
-    return {
-      songs: window.DMM.songLibrary || [],
-      nowPlaying: nowPlayingData
-    };
+    return data;
   }
 
   activateListeners(html) {
@@ -93,8 +79,43 @@ class DMM_UI extends Application {
       await window.DMM.stopAllMusic();
     });
 
+    // --- Intensity Slider ---
+    const intensityLabel = html.find("#dmm-intensity-label");
+
+    // Helper function to update the label's color class
+    const updateLabelColor = (level) => {
+      intensityLabel.removeClass("dmm-intensity-1 dmm-intensity-2 dmm-intensity-3 dmm-intensity-4");
+      intensityLabel.addClass(`dmm-intensity-${level}`);
+    };
+
+    // Set initial color
+    updateLabelColor(window.DMM.intensityLevel);
+
+    // Listener for slider changes
+    html.on("input", "#dmm-intensity-slider", (event) => {
+      const newIntensity = parseInt(event.currentTarget.value, 10);
+      window.DMM.intensityLevel = newIntensity;
+      
+      // Update the label text and color
+      intensityLabel.text(newIntensity);
+      updateLabelColor(newIntensity);
+      
+      console.log(`The intensity level is now ${window.DMM.intensityLevel}`);
+      
+      // Call the update function if a combat song is playing
+      if (window.DMM.playbackState && window.DMM.playbackState.song instanceof LayeredCombatSong) {
+        window.DMM.updateCombatIntensity(newIntensity);
+      }
+    });
+
     // Register for update events
     Hooks.on("dmm.songUpdate", this._onSongUpdate);
+
+    // Add listener for the new intensity buttons
+    html.find('.intensity-btn').on('click', event => {
+      const level = parseInt(event.currentTarget.dataset.level, 10);
+      window.DMM.setIntensity(level);
+    });
   }
 
   /**
